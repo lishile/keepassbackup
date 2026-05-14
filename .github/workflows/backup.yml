@@ -1,0 +1,63 @@
+name: Backup KeePass Database
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * *'   # UTC 06:00，每天执行一次
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download keepass database from WebDAV
+        run: |
+          curl -u "${{ secrets.WEBDAV_USERNAME }}:${{ secrets.WEBDAV_PASSWORD }}" \
+               "https://rausu.infini-cloud.net/dav/keepass/keepass.kdbx" \
+               -o keepass.kdbx
+
+      - name: Create key.xml
+        run: |
+          cat > key.xml << 'EOF'
+          ${{ secrets.KEEPASS_KEY_XML }}
+          EOF
+
+      - name: Encrypt keepass.kdbx
+        run: |
+          openssl enc -aes-256-cbc -pbkdf2 -iter 200000 \
+            -salt \
+            -in keepass.kdbx \
+            -out keepass.kdbx.enc \
+            -pass pass:"${{ secrets.KEEPASS_ENCRYPT_PASSWORD }}"
+
+      - name: Encrypt key.xml
+        run: |
+          openssl enc -aes-256-cbc -pbkdf2 -iter 200000 \
+            -salt \
+            -in key.xml \
+            -out key.xml.enc \
+            -pass pass:"${{ secrets.KEEPASS_ENCRYPT_PASSWORD }}"
+
+      - name: Remove plaintext files
+        run: |
+          rm -f keepass.kdbx key.xml
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add keepass.kdbx.enc key.xml.enc
+
+          if git diff --cached --quiet; then
+            echo "No changes."
+          else
+            git commit -m "Automated KeePass backup $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+            git push
+          fi
