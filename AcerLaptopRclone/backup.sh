@@ -12,9 +12,12 @@ git pull
 
 cd AcerLaptopRclone
 
-rm -rf rclone.conf
+rm -rf rclone.conf.enc
 
-cp ${rclone_config_file} rclone.conf
+openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt \
+	-in ${rclone_config_file} \
+	-out rclone.conf.enc \
+	-pass pass:${RCLONE_CONFIG_PASS}
 
 git add .
 
