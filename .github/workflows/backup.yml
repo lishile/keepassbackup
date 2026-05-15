@@ -19,7 +19,7 @@ jobs:
       - name: Download keepass database from WebDAV
         run: |
           curl -u "${{ secrets.WEBDAV_USERNAME }}:${{ secrets.WEBDAV_PASSWORD }}" \
-               "https://rausu.infini-cloud.net/dav/keepass/keepass.kdbx" \
+               "https://dav.jianguoyun.com/dav/jianguo/keepass.kdbx" \
                -o keepass.kdbx
 
       - name: Create key.xml
