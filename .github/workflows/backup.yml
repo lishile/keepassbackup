@@ -23,10 +23,16 @@ jobs:
           WEBDAV_USERNAME: ${{ secrets.WEBDAV_USERNAME }}
           WEBDAV_PASSWORD: ${{ secrets.WEBDAV_PASSWORD }}
         run: |
-          curl --variable %WEBDAV_USERNAME --variable %WEBDAV_PASSWORD \
+          curl --fail --silent --show-error \
+               --variable %WEBDAV_USERNAME --variable %WEBDAV_PASSWORD \
                --expand-user '{{WEBDAV_USERNAME}}:{{WEBDAV_PASSWORD}}' \
                "https://dav.jianguoyun.com/dav/jianguo/keepass.kdbx" \
                -o keepass.kdbx
+
+          if [ ! -s keepass.kdbx ] || [ "$(od -An -tx1 -N8 keepass.kdbx | tr -d ' \n')" != '03d9a29a67fb4bb5' ]; then
+            echo '下载失败：文件为空或不是 KDBX 数据库。' >&2
+            exit 1
+          fi
 
       - name: Create key.xml
         env:
