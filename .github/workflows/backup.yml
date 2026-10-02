@@ -19,34 +19,43 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Download keepass database from WebDAV
+        env:
+          WEBDAV_USERNAME: ${{ secrets.WEBDAV_USERNAME }}
+          WEBDAV_PASSWORD: ${{ secrets.WEBDAV_PASSWORD }}
         run: |
-          curl -u "${{ secrets.WEBDAV_USERNAME }}:${{ secrets.WEBDAV_PASSWORD }}" \
+          curl --variable %WEBDAV_USERNAME --variable %WEBDAV_PASSWORD \
+               --expand-user '{{WEBDAV_USERNAME}}:{{WEBDAV_PASSWORD}}' \
                "https://dav.jianguoyun.com/dav/jianguo/keepass.kdbx" \
                -o keepass.kdbx
 
       - name: Create key.xml
+        env:
+          KEEPASS_KEY_XML: ${{ secrets.KEEPASS_KEY_XML }}
         run: |
-          cat > key.xml << 'EOF'
-          ${{ secrets.KEEPASS_KEY_XML }}
-          EOF
+          printf '%s' "$KEEPASS_KEY_XML" > key.xml
 
       - name: Encrypt keepass.kdbx
+        env:
+          KEEPASS_ENCRYPT_PASSWORD: ${{ secrets.KEEPASS_ENCRYPT_PASSWORD }}
         run: |
           openssl enc -aes-256-cbc -pbkdf2 -iter 200000 \
             -salt \
             -in keepass.kdbx \
             -out keepass.kdbx.enc \
-            -pass pass:"${{ secrets.KEEPASS_ENCRYPT_PASSWORD }}"
+            -pass env:KEEPASS_ENCRYPT_PASSWORD
 
       - name: Encrypt key.xml
+        env:
+          KEEPASS_ENCRYPT_PASSWORD: ${{ secrets.KEEPASS_ENCRYPT_PASSWORD }}
         run: |
           openssl enc -aes-256-cbc -pbkdf2 -iter 200000 \
             -salt \
             -in key.xml \
             -out key.xml.enc \
-            -pass pass:"${{ secrets.KEEPASS_ENCRYPT_PASSWORD }}"
+            -pass env:KEEPASS_ENCRYPT_PASSWORD
 
       - name: Remove plaintext files
+        if: ${{ always() }}
         run: |
           rm -f keepass.kdbx key.xml
 
